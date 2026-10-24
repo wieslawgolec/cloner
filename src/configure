@@ -1,0 +1,9 @@
+#!/bin/sh
+
+BASH=`which bash`
+
+if [ ! "$BASH" = "" ]; then
+    $BASH configure.sh $1 $2
+else
+    echo "-+- Bash shell not found. configure falied :("
+fi

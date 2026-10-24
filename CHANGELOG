@@ -1,0 +1,112 @@
+ * CHANGELOG
+ *
+ * 13-01-2014 (0.2.3)
+ *
+ * improved clones loading system
+ * now when single clone load to fail, program will no exit, just report it
+ *
+ * added dynamic clones loading system (not tested very well)
+ * new command: load - connect given number of clones (but still suggest to load clones using parameter in command line)
+ *
+ * simplified usage again (./cloner <server> [port] [number] [delay] [ip vhost file])
+ * when port not given use default
+ *
+ * added defines:
+ * default server port: 6667
+ * default clones loading number (when not given): 0 (mean no auto loading from command line, when no parameter)
+ *
+ * 13-01-2014 (0.2.2-2)
+ *
+ * disable ip check while accepting incomming connection for built-in ident service
+ * added "no-ident" file check (if exists, cloner will not try to use built-in ident service)
+ *
+ * added defines:
+ * default no ident file: .no-ident
+ *
+ * 03-01-2014 (0.2.2-1)
+ *
+ * added auto-rejoin check (if clones are not channels, they will try to join every 20 secs)
+ * improved register nick with ircd (if fail to register generated nick, clones will use unique ID)
+ * 
+ * 01-01-2014 (0.2.2)
+ *
+ * fixed bug with auto-entering neutral mode on channel join (clones didn't react when opped)
+ * fixed bug with auto-exit program when nickname was already in use (while registering to ircd)
+ *
+ * improved debug mode 
+ * logging all parsed data to file for every clone connection
+ * new command: neutral - print information about current mode (if on, clones will not react when opped)
+ *              this should simplify debuging accidently auto-entering neutral mode 
+ *
+ * 31-12-2013 (0.2.1-1)
+ *
+ * improved user commands (cosmetic adjustments)
+ * help  - join with delay information
+ * chan  - will show chan if already set
+ * key   - will show chan key if already set
+ * addop - now check if nick is not already added.
+ *         if try to add mask (nick!user@host), will extract nick from mask and add nick only.
+ *
+ * 31-12-2013 (0.2.1)
+ *
+ * added ipv6 support for built-in ident server
+ * tested ipv6 vhost (using ::1 as vhost (local ip) and seems working)
+ *
+ * 30-12-2013 (0.2.0-1)
+ *
+ * added built-in ident server (ipv4 only)
+ * will work only, if process got permission to bind on port lower than 1024 (by default root only)
+ * and port is not already in use (mean no oidentd service running). if want to use this feature, run 
+ * cloner as root and kill oidentd service before (killall -9 oidentd).
+ *
+ * 26-12-2013 (0.2.0)
+ *
+ * fixed vhost loading (not tested for ipv6, ipv4 tested) 
+ * fixed corrupted memory data parsing crash 
+ * added simple binary protector
+ * added configure script
+ * added creating relase scripts
+ *
+ * added defines
+ * internal clone buffer size: 1024 chars
+ *
+ * 13-12-2013 (0.1.0-2)
+ *
+ * improved vhost loading function
+ * now will check, if a line is valid ip (or ipv6) address 
+ *
+ * added chan key support
+ *
+ * added joining chan with delay
+ *
+ * 12-12-2013 (0.1.0-1)
+ *
+ * added ipv6 support
+ *
+ * added vhost support
+ * 
+ * simplified usage
+ * 
+ * added defines
+ * ipv6 support: yes
+ * default vhost file: .vhosts
+ * default connect delay: 1 sec
+ * 
+ * 11-12-2013 (0.1.0)
+ * 
+ * improved work algorithm
+ * instead of first op all clones, then start deoping, we will mix those actions.
+ * if there is someone to punish, and other clone to op, will first op max other 2 
+ * other clones and punish other 3 or 4 (depends of mode) of enemies. such algorithm 
+ * improve efficiency rate when using kick mode (4-5% efficiency increase). 
+ * it's also interrupt (in most cases) algorithm of defensive botnet's and scripts
+ * which are protecting channel.
+ *
+ * added random nick support
+ *
+ * added defines
+ * channel max length: 50 chars
+ * nick max length: 15 chars
+ * max clones: 100
+ * lag check delay: 30 secs
+ * max connect delay: 1 day

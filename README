@@ -1,0 +1,33 @@
+	     _/_/_/  _/
+	  _/        _/    _/_/    _/_/_/      _/_/    _/  _/_/
+	 _/        _/  _/    _/  _/    _/  _/_/_/_/  _/_/
+	_/        _/  _/    _/  _/    _/  _/        _/
+	 _/_/_/  _/    _/_/    _/    _/    _/_/_/  _/
+
+ * simple, unoptimized, maybe buggy irc cloner program BUT IT ROCKS.
+ *
+ * because i lost previous sources, i decide to write it again from begin
+ * and again based on jococloner by [joco].
+ *
+ * re-released (binary only): 2013.12.12. please don't abuse.
+ *
+ * about fast mode: it's a lot faster but sometimes it can be a disatvantage.
+ * when in fast mode, the cloner assumes that after it sends an op command,
+ * then it doesn't wait for the irc server's answer but goes on with the opped
+ * client right then. when the lags are small (check out with the lag command)
+ * and you have a good connection, then fast mode is really cool! 100 clones
+ * can op each other in a millisecond. the problem is when you're lagged. for
+ * example client1 ops client2, and client2 ops client3 right after, but when
+ * the lag calculations are not correct, ircd sees this: client2 opped client3
+ * and then client1 opped client2. so client3 won't have chanop status and
+ * the whole thing is messed up.
+ *
+ * note about testing it against other similar software: when you test it on
+ * small, local networks, beware: the last connected client gets processed
+ * first in ircd, i.e. the process order and connect order are reverse. if you
+ * want a good testing environment, connect the two (or more) cloners at about
+ * the same time and same delay. however, on small networks, the last connected
+ * client will _always_ have an advantage.
+ *
+ * as i mentioned, it's buggy. it doesn't care about channel modes, it always
+ * assumes the clients are not banned, channel can be joined, etc.
