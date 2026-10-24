@@ -347,7 +347,7 @@ void MD5HexHash(char digest[33], char *data, int datalen, unsigned char *key, in
 
 	memset(digest, 0 , 33);
 	for(i=0; i<16; ++i)
-		sprintf(digest, "%s%02x", digest, abs(buf[i]));
+		sprintf(digest, "%s%02x", digest, (unsigned int)buf[i]);
 	digest[32] = '\0';
 }
 
@@ -360,7 +360,7 @@ void MD5CreateAuthString(char *str, int len)
 
 	/* len must be even */
 	for(i=0; i<len/2; ++i)
-		sprintf(str, "%s%02x", str, abs(rand() % 255+1));
+		sprintf(str, "%s%02x", str, (unsigned int)(rand() % 255 + 1));
 
 	str[len] = '\0';
 }
