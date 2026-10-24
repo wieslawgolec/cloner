@@ -84,12 +84,21 @@ echo "#
 # Warning! All changes made in this file will be lost!
 #
 
-.SUFFIXES: .c .o
+# IMPORTANT: the real target must be the first target in the file
+# otherwise 'make -f Makefile.xxx' only builds the first rule it sees.
 
 CC = gcc
 OUT = $OUT
 CFLAGS = $CFLAGS $FLAGS
 LFLAGS = $LFLAGS
+
+OBJS = $OBJS
+
+$TARGET: key.h \$(OBJS)
+	@echo '-+- Linking \$(OUT)'
+	@\$(CC) \$(OBJS) -o \$(OUT) \$(CFLAGS) \$(LFLAGS)
+
+.SUFFIXES: .c .o
 
 .c.o:
 	@echo '-+- Compiling \$<'
@@ -100,12 +109,6 @@ validate.o: key.h
 
 key.h:
 	@make -f Makefile.key
-
-OBJS = $OBJS
-
-$TARGET: key.h \$(OBJS)
-	@echo '-+- Linking \$(OUT)'
-	@\$(CC) \$(OBJS) -o \$(OUT) \$(CFLAGS) \$(LFLAGS)
 "  > Makefile.$TARGET
 }
 
