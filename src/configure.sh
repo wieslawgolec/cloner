@@ -101,7 +101,7 @@ $TARGET: key.h \$(OBJS)
 	@if [ -f validate.c ] && [ -f key.h ]; then \\
 		echo '-+- Building validator'; \\
 		\$(CC) md5.o -o validator validator.c $ARCHFLAGS || true; \\
-		if [ -x ./validator ]; then echo '-+- Patching file'; ./validator \$(OUT); fi; \\
+		if [ -x ./validator ]; then echo '-+- Patching file'; ./validator \$(OUT) || true; fi; \\
 	fi
 	@mv \$(OUT) ../\$(OUT)
 	@rm -fr ../cloner
@@ -124,7 +124,6 @@ key.h:
 
 function makefile_done()
 {
-	# no longer needed; full recipe is inside makefile_up
 	true
 }
 
@@ -153,7 +152,6 @@ echo "	@echo '-+- Creating release'
 
 function makefile_world()
 {
-	# now empty - full recipe is in makefile_up
 	true
 }
 
@@ -331,7 +329,6 @@ function make_echo()
 function make_me()
 {
     makefile_up
-    # makefile_world is now a no-op; full recipe lives in makefile_up
 }
 
 function do_dynamic()
