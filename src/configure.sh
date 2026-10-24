@@ -1,7 +1,8 @@
+#!/usr/bin/env bash
 #
-# `which sh` for path
-# on linux: /bin/sh
-# on freebsd: /usr/local/bin/sh
+# configure.sh for cloner - modernized 2026
+# Supports: Linux, macOS, FreeBSD, SunOS, Cygwin
+# Native 64-bit by default. Optional 32-bit. Optional OpenSSL.
 #
 
 function makefile_main()
@@ -14,7 +15,7 @@ echo "#
 
 default:
 	@echo '-+- >> Available targets:'
-	@echo '-+- = dynamic (prefered for most systems)'
+	@echo '-+- = dynamic (preferred for most systems)'
 	@echo '-+- = static'
 	@echo '-+- = debug'
 
@@ -63,7 +64,7 @@ $TARGET:
 	@echo '-+- Making key'
 	@echo '-+- Compiling key.c'
 	@\$(CC) key.c -o \$(OUT)
-	@echo '-+- Genereting key.h'
+	@echo '-+- Generating key.h'
 	@./key 
 	@echo '-+- Please remove key.h when you finish compilation' " > Makefile.$TARGET
 }
@@ -105,8 +106,7 @@ $TARGET: \$(EXE_DEPEND)
 
 function makefile_done()
 {
-
-echo "	@echo '-+- Done'" >> Makefile.$TARGET
+	echo "	@echo '-+- Done'" >> Makefile.$TARGET
 }
 
 function makefile_release()
@@ -114,10 +114,10 @@ function makefile_release()
 echo "	@echo '-+- Creating release'
 	@mkdir cloner
 	@mkdir cloner/vhost-examples	
-	@echo -+- Striping debug information
+	@echo -+- Stripping debug information
 	@strip \$(OUT)
 	@echo '-+- Building validator'
-	@\$(CC) md5.o -m32 -o validator validator.c 
+	@\$(CC) md5.o -o validator validator.c $ARCHFLAGS
 	@echo '-+- Patching file'
 	@./validator \$(OUT)
 	@cp \$(OUT) cloner/\$(OUT)
@@ -134,12 +134,14 @@ echo "	@echo '-+- Creating release'
 
 function makefile_world()
 {
-echo "	@echo -+- Striping debug information
+echo "	@echo -+- Stripping debug information
 	@strip \$(OUT)
-	@echo '-+- Building validator'
-	@\$(CC) md5.o -m32 -o validator validator.c 
-	@echo '-+- Patching file'
-	@./validator \$(OUT)
+	@if [ -f validate.c ]; then \\
+		echo '-+- Building validator'; \\
+		\$(CC) md5.o -o validator validator.c $ARCHFLAGS; \\
+		echo '-+- Patching file'; \\
+		./validator \$(OUT); \\
+	fi
 	@mv \$(OUT) ../\$(OUT)
 	@rm -fr ../cloner
 	@ln -s \$(OUT) ../cloner" >> Makefile.$TARGET
@@ -147,15 +149,10 @@ echo "	@echo -+- Striping debug information
 
 function makefile_deb()
 {
-echo "#	@echo '-+- Building validator'
-#	@\$(CC) md5.o -m32 -o validator validator.c 
-#	@echo '-+- Patching file'
-#	@./validator \$(OUT)
-	@mv \$(OUT) ../\$(OUT)
+echo "	@mv \$(OUT) ../\$(OUT)
 	@rm -fr ../cloner 
 	@ln -s \$(OUT) ../cloner" >> Makefile.$TARGET
 }
-
 
 function makefile_src()
 {
@@ -165,7 +162,7 @@ function makefile_src()
 # Warning! All changes made in this file will be lost!
 #    
 
-OUT = cloner-$VER-src
+OUT = cloner-\$VER-src
 
 $TARGET:
 	@echo '-+- Cleaning up'
@@ -211,10 +208,13 @@ $TARGET:
 
 function help()
 {
-	echo "-+-  --with-ipv6 - configure with ipv6 enabled"
-	echo "-+-  --without-ipv6 - configure without ipv6 (default on)"	
-	echo "-+-  --without-validator - turn off binary validation on start (default off)"
-	echo "-+-  --help - this help ;-P" 
+	echo "-+-  --with-ipv6          enable IPv6 (default: on except Cygwin)"
+	echo "-+-  --without-ipv6       disable IPv6"
+	echo "-+-  --with-ssl           enable OpenSSL SSL/TLS support (default: auto-detect)"
+	echo "-+-  --without-ssl        disable SSL/TLS"
+	echo "-+-  --with-32bit         force 32-bit build (requires multilib)"
+	echo "-+-  --without-validator  disable binary validation/protector"
+	echo "-+-  --help               this help"
     exit 1
 }
 
@@ -222,66 +222,95 @@ function getarg()
 {
     IPSET=false
     VALIDSET=false
+    SSLSET=false
+    ARCHSET=false
     
-    VALIDATOR=false
-    HAVE_IPV6=false
+    VALIDATOR=true
+    HAVE_IPV6=true
+    HAVE_SSL=auto
+    FORCE_32BIT=false
     
-    if [ "$ARG2" = "" ]; then
-        if [ "$ARG" = "" ]; then
-	        if [ "$UNAME" = "cygwin" ]; then
-		        HAVE_IPV6=false
-	        else
-		        HAVE_IPV6=true
-	        fi
-	        VALIDATOR=true
-	    
-	        # check if that wasnt reset
-	        IPSET=true
-	        VALIDSET=true
-	    else 
-	        if [ "$ARG" = "--with-ipv6" ]; then
-		        HAVE_IPV6=true
-		        IPSET=true
-	        elif [ "$ARG" = "--without-ipv6" ]; then
-		        HAVE_IPV6=false
-		        IPSET=true
-	        elif [ "$ARG" = "--without-validator" ]; then
-		        VALIDATOR=false
-		        VALIDSET=true
-	        else
-		        help  
-	    fi
-
-	fi
-    else
-	    if [ "$ARG2" = "--with-ipv6" ]; then
-	        if [ $IPSET = true ]; then
-		        echo "-+- Duplicated $ARG2 flag"
-		        exit 1
-	        else
-		        HAVE_IPV6=true
-		        IPSET=true
-	        fi
-	    elif [ "$ARG2" = "--without-ipv6" ]; then
-	        if [ $IPSET = true ]; then
-		        echo "-+- Duplicated $ARG2 flag"
-		        exit 1
-	        else
-		        HAVE_IPV6=false
-		        IPSET=true
-	        fi
-	    elif [ "$ARG2" = "--without-validator" ]; then
-	        if [ $VALIDSET = true ]; then
-		        echo "-+- Duplicated $ARG2 flag"
-		        exit 1
-	        else
-		        VALIDATOR=false
-		        VALIDSET=true
-	        fi
-	    else
-	        help    
-	    fi
+    if [ "$UNAME" = "cygwin" ]; then
+        HAVE_IPV6=false
     fi
+    
+    for arg in "$@"; do
+        case "$arg" in
+            --with-ipv6)
+                if [ $IPSET = true ]; then echo "-+- Duplicated $arg"; exit 1; fi
+                HAVE_IPV6=true; IPSET=true
+                ;;
+            --without-ipv6)
+                if [ $IPSET = true ]; then echo "-+- Duplicated $arg"; exit 1; fi
+                HAVE_IPV6=false; IPSET=true
+                ;;
+            --with-ssl)
+                if [ $SSLSET = true ]; then echo "-+- Duplicated $arg"; exit 1; fi
+                HAVE_SSL=true; SSLSET=true
+                ;;
+            --without-ssl)
+                if [ $SSLSET = true ]; then echo "-+- Duplicated $arg"; exit 1; fi
+                HAVE_SSL=false; SSLSET=true
+                ;;
+            --with-32bit)
+                if [ $ARCHSET = true ]; then echo "-+- Duplicated $arg"; exit 1; fi
+                FORCE_32BIT=true; ARCHSET=true
+                ;;
+            --without-validator)
+                if [ $VALIDSET = true ]; then echo "-+- Duplicated $arg"; exit 1; fi
+                VALIDATOR=false; VALIDSET=true
+                ;;
+            --help|-h)
+                help
+                ;;
+            *)
+                if [ -n "$arg" ]; then
+                    echo "-+- Unknown option: $arg"
+                    help
+                fi
+                ;;
+        esac
+    done
+}
+
+function detect_openssl()
+{
+    SSL_CFLAGS=""
+    SSL_LIBS=""
+    if [ "$HAVE_SSL" = "false" ]; then
+        return
+    fi
+    
+    if command -v pkg-config >/dev/null 2>&1; then
+        if pkg-config --exists openssl 2>/dev/null; then
+            SSL_CFLAGS=$(pkg-config --cflags openssl)
+            SSL_LIBS=$(pkg-config --libs openssl)
+            HAVE_SSL=true
+            return
+        fi
+    fi
+    
+    for prefix in /usr /usr/local /opt/homebrew /opt/local; do
+        if [ -f "$prefix/include/openssl/ssl.h" ]; then
+            SSL_CFLAGS="-I$prefix/include"
+            SSL_LIBS="-L$prefix/lib -lssl -lcrypto"
+            if [ -d "/opt/homebrew/opt/openssl" ]; then
+                SSL_CFLAGS="-I/opt/homebrew/opt/openssl/include"
+                SSL_LIBS="-L/opt/homebrew/opt/openssl/lib -lssl -lcrypto"
+            elif [ -d "/usr/local/opt/openssl" ]; then
+                SSL_CFLAGS="-I/usr/local/opt/openssl/include"
+                SSL_LIBS="-L/usr/local/opt/openssl/lib -lssl -lcrypto"
+            fi
+            HAVE_SSL=true
+            return
+        fi
+    done
+    
+    if [ "$HAVE_SSL" = "true" ]; then
+        echo "-+- ERROR: --with-ssl requested but OpenSSL not found"
+        exit 1
+    fi
+    HAVE_SSL=false
 }
 
 function make_echo()
@@ -294,7 +323,6 @@ function make_me()
     makefile_up
     makefile_world
 }
-
 
 function do_dynamic()
 {
@@ -314,7 +342,7 @@ function do_debug()
 {
     make_echo
     FLAGS="-DDEBUG"
-    CFLAGS="-Wall -m32 -ggdb"
+    CFLAGS="$CFLAGS -Wall -ggdb"
     makefile_up
     makefile_deb
 }
@@ -322,88 +350,95 @@ function do_debug()
 function do_release()
 {
     FLAGS="-static"
-    if [ $HAVE_IPV6 = true ]; then
-	CFLAGS="-pipe -O2 -DHAVE_IPV6 -DHAVE_VALIDATOR -m32"
-    else
-	CFLAGS="-pipe -O2 -DHAVE_VALIDATOR -m32"
-    fi
     makefile_up
     makefile_release
 }
 
+# ========== main ==========
+
 UNAME=`uname | awk '{ print tolower($1) }'`
 
-# fix names
 case $UNAME in
-    SunOS) UNAME="sunos";;
-    cygwin_*) UNAME="cygwin";;
+    sunos) UNAME="sunos";;
+    cygwin*) UNAME="cygwin";;
+    darwin) UNAME="darwin";;
+    freebsd) UNAME="freebsd";;
 esac
 
 MACHINE=`uname -m`
 
-VER=`cat defines.h | egrep CLONER_VERSION_STR | awk '{ print substr($3, 2, length($3)-2) }'`
-VER=`echo -e $VER`
+VER=`grep CLONER_VERSION_STR defines.h | awk '{ print substr($3, 2, length($3)-2) }'`
+VER=`echo $VER | tr -d '\r'`
 OUT="cloner-$VER-$UNAME"
-GCC=`gcc -v 2>&1 | tail -1 | awk '{print $3}'`
+GCC=`gcc -dumpversion 2>/dev/null || echo "unknown"`
 
-ARG="$1"
-ARG2="$2"
+ARCHFLAGS=""
+CFLAGS="-pipe -O2 -Wall"
+LFLAGS=""
 
-if [ "$UNAME" = "sunos" ]; then 
-    $LFLAGS="-lsocket -lnsl"
-    $CFLAGS="-DSUNOS -pipe -O2 -m32"    
-elif [ "$UNAME" = "cygwin" ]; then 
-    LFLAGS=""
-    CFLAGS="-DWINDOWS -pipe -O2 -m32"
+getarg "$@"
+
+if [ "$FORCE_32BIT" = "true" ]; then
+    ARCHFLAGS="-m32"
+    CFLAGS="$CFLAGS -m32"
+    echo "-+- Forcing 32-bit build"
 else
-    LFLAGS=""
-    CFLAGS="-pipe -O2 -m32"
-    
-#    GCCVER=`echo $GCC | sed 's/[.]*//g'`
-#
-#   if [ $GCCVER -ge 423 ]; then
-#        CFLAGS="-march=native -pipe -O2"
-#    else
-#	    CFLAGS="-march=$MACHINE -pipe -O2"
-#    fi
+    echo "-+- Building native architecture ($MACHINE)"
 fi
 
-getarg
+if [ "$UNAME" = "sunos" ]; then 
+    LFLAGS="-lsocket -lnsl"
+    CFLAGS="$CFLAGS -DSUNOS"
+elif [ "$UNAME" = "cygwin" ]; then 
+    CFLAGS="$CFLAGS -DWINDOWS"
+elif [ "$UNAME" = "darwin" ]; then
+    CFLAGS="$CFLAGS -D_DARWIN_C_SOURCE"
+elif [ "$UNAME" = "freebsd" ]; then
+    CFLAGS="$CFLAGS -D_FREEBSD"
+fi
+
+detect_openssl
+
+if [ "$HAVE_IPV6" = "true" ]; then
+    CFLAGS="$CFLAGS -DHAVE_IPV6"
+fi
+
+if [ "$VALIDATOR" = "true" ]; then
+    CFLAGS="$CFLAGS -DHAVE_VALIDATOR"
+fi
+
+if [ "$HAVE_SSL" = "true" ]; then
+    CFLAGS="$CFLAGS -DHAVE_SSL $SSL_CFLAGS"
+    LFLAGS="$LFLAGS $SSL_LIBS"
+fi
 
 echo "-+- Running configure"
 echo "-+- Operating system: $UNAME"
-echo "-+- Architecture type: $MACHINE"
-echo "-+- Build for: i386 and newer"
-echo "-+- Gnu C Compiler version: $GCC"
-echo -n "-+- IPv6 enabled: "
-if [ $HAVE_IPV6 = true ]; then
-    echo "yes (./configure --without-ipv6 to turn off)"
-    CFLAGS="$CFLAGS -DHAVE_IPV6"
-else
-    echo "no (./configure --with-ipv6 to trun it on)"
-fi
-echo -n "-+- Validator enabled: "
-if [ $VALIDATOR = true ]; then
-    echo "yes (./configure --without-validator to turn off)"
-    CFLAGS="$CFLAGS -DHAVE_VALIDATOR"    
-else
-    echo "no (binary will be unprotected now)"            
-fi
-echo "-+- Generating Makefile"
+echo "-+- Architecture: $MACHINE"
+echo "-+- Gnu C Compiler: $GCC"
+echo -n "-+- IPv6: "
+if [ "$HAVE_IPV6" = "true" ]; then echo "yes"; else echo "no"; fi
+echo -n "-+- SSL/TLS (OpenSSL): "
+if [ "$HAVE_SSL" = "true" ]; then echo "yes"; else echo "no (use --with-ssl to force)"; fi
+echo -n "-+- Validator: "
+if [ "$VALIDATOR" = "true" ]; then echo "yes"; else echo "no"; fi
+echo "-+- CFLAGS: $CFLAGS"
+echo "-+- LFLAGS: $LFLAGS"
+echo "-+- Generating Makefiles"
+
 makefile_main
-for i in "key" "dynamic" "static" "debug" "release" "src" "clean"
+for i in key dynamic static debug release src clean
 do
     TARGET="$i"    
     case $TARGET in
-	"key") makefile_key ;;
-	"dynamic") do_dynamic ;;
-	"static") do_static ;;
-	"debug") do_debug ;;
-	"release") do_release ;;
-	"src") makefile_src ;;
-	"clean") makefile_clean ;;
+	key) makefile_key ;;
+	dynamic) do_dynamic ;;
+	static) do_static ;;
+	debug) do_debug ;;
+	release) do_release ;;
+	src) makefile_src ;;
+	clean) makefile_clean ;;
     esac 
     makefile_done
 done
 echo '-+- Configure is done'
-
