@@ -1,5 +1,16 @@
  * CHANGELOG
  *
+ * 24-10-2026 (0.3.0)
+ *
+ * Modernization for current systems and IRCNet 2.11+/2.12.0-pre:
+ * - Native 64-bit builds by default (optional --with-32bit)
+ * - OpenSSL SSL/TLS support (--with-ssl / auto-detect, port 6697)
+ * - Updated configure.sh: better platform support (Linux, macOS, FreeBSD, SunOS, Cygwin)
+ * - GitHub Actions CI: Ubuntu, macOS, FreeBSD
+ * - Code hygiene: vsnprintf, time.h, abs() fix, key.h dependency
+ * - Keep full backward compatibility with plain TCP and old servers
+ * - Binary validator remains optional (--without-validator)
+ *
  * 13-01-2014 (0.2.3)
  *
  * improved clones loading system
