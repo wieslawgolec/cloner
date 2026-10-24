@@ -22,9 +22,9 @@ jobs:
           set -e
           chmod +x configure configure.sh
           bash configure --without-validator
-          make -f Makefile.dynamic V=1
-          ls -la
-          ls -la ../cloner* 
+          make dynamic
+          echo "=== artifacts ==="
+          ls -la ../cloner*
           file ../cloner*
 
   macos:
@@ -40,8 +40,8 @@ jobs:
           set -e
           chmod +x configure configure.sh
           bash configure --without-validator
-          make -f Makefile.dynamic V=1
-          ls -la
+          make dynamic
+          echo "=== artifacts ==="
           ls -la ../cloner*
           file ../cloner*
 
@@ -61,6 +61,6 @@ jobs:
             cd src
             chmod +x configure configure.sh
             bash configure --without-validator
-            gmake -f Makefile.dynamic V=1
-            ls -la
+            gmake dynamic || make dynamic
+            echo "=== artifacts ==="
             ls -la ../cloner*
