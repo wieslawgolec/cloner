@@ -5,12 +5,12 @@ void parse_ident(struct ident_list *current_ident)
 {
 	int i, j;
 	char b[IDENT_BUF_LEN + 1];
-	char c[IDENT_BUF_LEN + 1]; // 
+	char c[IDENT_BUF_LEN + 1];
 
 	for(;;)
 	{
-		j =- 1;
-		for(i = 0; current_ident->buf; i++)
+		j = -1;
+		for(i = 0; current_ident->buf[i]; i++)
 			if(current_ident->buf[i] == '\n')
 			{
 				j = i;
@@ -21,8 +21,14 @@ void parse_ident(struct ident_list *current_ident)
 			
 		memset(b, 0, sizeof(b));
 		memset(c, 0, sizeof(c));
-		strncpy(b, current_ident->buf, j - 1);
-		strcpy(c, (char *) &current_ident->buf[j + 1]);
+		if (j > 0)
+			memcpy(b, current_ident->buf, (size_t)(j > IDENT_BUF_LEN ? IDENT_BUF_LEN : j));
+		b[j > IDENT_BUF_LEN ? IDENT_BUF_LEN : j] = '\0';
+		/* strip possible trailing \r */
+		if (j > 0 && b[j-1] == '\r')
+			b[j-1] = '\0';
+		strncpy(c, &current_ident->buf[j + 1], IDENT_BUF_LEN);
+		c[IDENT_BUF_LEN] = '\0';
 
 		ident_msg(current_ident, b);
 		
@@ -47,6 +53,7 @@ void ident_msg(struct ident_list *current_ident, char *b)
     /* backup request data */
     memset(request, 0, sizeof(request));   
     strncpy(request, b, IDENT_BUF_LEN); 
+    request[IDENT_BUF_LEN] = '\0';
 
 	while(*bp != ',' && *bp) bp++;
 	*bp++ = 0;
