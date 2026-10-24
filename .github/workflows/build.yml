@@ -13,6 +13,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, ubuntu-22.04, ubuntu-20.04, macos-latest]
+        ssl: [auto, without]
     steps:
       - uses: actions/checkout@v4
 
@@ -20,23 +21,22 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential libssl-dev
+          sudo apt-get install -y build-essential libssl-dev pkg-config
 
       - name: Install dependencies (macOS)
         if: runner.os == 'macOS'
         run: |
-          brew install openssl
+          brew install openssl pkg-config
 
       - name: Configure
         working-directory: src
         run: |
           chmod +x configure configure.sh
-          bash configure --without-validator
-          # Temporary: strip forced -m32 until configure.sh is fully modernized
-          sed -i.bak 's/-m32//g' Makefile.* 2>/dev/null || true
-          # On macOS, ensure OpenSSL paths if needed later
-          if [ "$(uname)" = "Darwin" ]; then
-            echo "OpenSSL via Homebrew will be used when SSL support is enabled"
+          if [ "${{ matrix.ssl }}" = "without" ]; then
+            bash configure --without-validator --without-ssl
+          else
+            # auto-detect OpenSSL (should succeed on all our runners)
+            bash configure --without-validator
           fi
 
       - name: Build dynamic
@@ -52,8 +52,10 @@ jobs:
       - name: Show binary info
         working-directory: src
         run: |
+          echo "=== Build artifacts ==="
           ls -la ../cloner* 2>/dev/null || ls -la . || true
           file ../cloner* 2>/dev/null || true
+          echo "=== Config summary (from earlier) ==="
 
       - name: Clean
         working-directory: src
