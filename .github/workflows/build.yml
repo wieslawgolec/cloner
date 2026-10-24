@@ -22,16 +22,9 @@ jobs:
           set -e
           chmod +x configure configure.sh
           bash configure --without-validator
-          echo "===== Makefile.dynamic ====="
-          cat Makefile.dynamic
-          echo "===== make dynamic ====="
           make dynamic
-          echo "===== src/ contents ====="
-          ls -la
-          echo "===== parent contents ====="
-          ls -la ..
-          ls -la ../cloner* || true
-          file ../cloner* || true
+          ls -la ../cloner*
+          file ../cloner*
 
   macos:
     runs-on: macos-latest
@@ -46,16 +39,9 @@ jobs:
           set -e
           chmod +x configure configure.sh
           bash configure --without-validator
-          echo "===== Makefile.dynamic ====="
-          cat Makefile.dynamic
-          echo "===== make dynamic ====="
           make dynamic
-          echo "===== src/ contents ====="
-          ls -la
-          echo "===== parent contents ====="
-          ls -la ..
-          ls -la ../cloner* || true
-          file ../cloner* || true
+          ls -la ../cloner*
+          file ../cloner*
 
   freebsd:
     runs-on: ubuntu-latest
@@ -73,12 +59,5 @@ jobs:
             cd src
             chmod +x configure configure.sh
             bash configure --without-validator
-            echo "===== Makefile.dynamic ====="
-            cat Makefile.dynamic
-            echo "===== make dynamic ====="
             gmake dynamic || make dynamic
-            echo "===== src/ contents ====="
-            ls -la
-            echo "===== parent contents ====="
-            ls -la ..
-            ls -la ../cloner* || true
+            ls -la ../cloner*
