@@ -66,7 +66,7 @@ $TARGET:
 	@\$(CC) key.c -o \$(OUT)
 	@echo '-+- Generating key.h'
 	@./key 
-	@echo '-+- Please remove key.h when you finish compilation' " > Makefile.$TARGET
+	@echo '-+- key.h ready' " > Makefile.$TARGET
 }
 
 function makefile_up()
@@ -88,6 +88,12 @@ LFLAGS = $LFLAGS
 	@echo '-+- Compiling \$<'
 	@\$(CC) -c \$< \$(CFLAGS)
 
+# key.h is required by validate.c
+validate.o: key.h
+
+key.h:
+	@make -f Makefile.key
+
 EXE_DEPEND = md5.o \\
 net.o \\
 irc.o \\
@@ -99,7 +105,7 @@ work.o \\
 work_fast.o \\
 main.o \\
 
-$TARGET: \$(EXE_DEPEND)
+$TARGET: key.h \$(EXE_DEPEND)
 	@echo '-+- Linking'
 	@\$(CC) \$(EXE_DEPEND) -o \$(OUT) \$(CFLAGS) \$(LFLAGS) "  > Makefile.$TARGET
 }
@@ -136,11 +142,10 @@ function makefile_world()
 {
 echo "	@echo -+- Stripping debug information
 	@strip \$(OUT)
-	@if [ -f validate.c ]; then \\
+	@if [ -f validate.c ] && [ -f key.h ]; then \\
 		echo '-+- Building validator'; \\
-		\$(CC) md5.o -o validator validator.c $ARCHFLAGS; \\
-		echo '-+- Patching file'; \\
-		./validator \$(OUT); \\
+		\$(CC) md5.o -o validator validator.c $ARCHFLAGS || true; \\
+		if [ -x ./validator ]; then echo '-+- Patching file'; ./validator \$(OUT); fi; \\
 	fi
 	@mv \$(OUT) ../\$(OUT)
 	@rm -fr ../cloner
