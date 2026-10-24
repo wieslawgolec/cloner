@@ -9,7 +9,27 @@
  * because i lost previous sources, i decide to write it again from begin
  * and again based on jococloner by [joco].
  *
- * re-released (binary only): 2013.12.12. please don't abuse.
+ * Original re-release (binary only): 2013.12.12. please don't abuse.
+ *
+ * == Modernization (v0.3.0 - 2026) ==
+ * - Updated to build on modern 64-bit systems (Linux, macOS) while keeping
+ *   compatibility with older systems previously supported.
+ * - Dropped forced -m32; builds native architecture by default.
+ * - Preparing SSL/TLS support for IRCNet 2.11+/2.12.0-pre servers
+ *   (ports typically 6697). OpenSSL integration in progress.
+ * - GitHub Actions CI added to verify builds on multiple OS versions
+ *   (Ubuntu latest/22.04/20.04, macOS).
+ * - Version bumped to 0.3.0.
+ *
+ * Build:
+ *   cd src
+ *   ./configure [--with-ipv6] [--without-validator] [--with-ssl]
+ *   make dynamic   # preferred
+ *   # or: make static / make debug
+ *
+ * Usage (unchanged core):
+ *   ./cloner <server> [port] [number] [delay] [ip vhost file]
+ *   Default port 6667. For SSL servers use port 6697 (SSL support WIP).
  *
  * about fast mode: it's a lot faster but sometimes it can be a disatvantage.
  * when in fast mode, the cloner assumes that after it sends an op command,
@@ -31,3 +51,5 @@
  *
  * as i mentioned, it's buggy. it doesn't care about channel modes, it always
  * assumes the clients are not banned, channel can be joined, etc.
+ *
+ * See CHANGELOG for history. Contributions / fixes welcome on the develop branch.
