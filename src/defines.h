@@ -10,10 +10,17 @@
 #define DEFAULT_CONNECT_DELAY   1           /* 1 sec */
 
 #define DEFAULT_SERVER_PORT     6667        /* default server port used when not given */
+#define DEFAULT_SSL_PORT        6697        /* default SSL/TLS port for modern IRCNet */
 #define DEFAULT_CLONE_NUMBER    0           /* number of clones which will be loaded by default if number not given */
 
+/* Feature flags - can be overridden by configure */
+#ifndef HAVE_IPV6
 #define HAVE_IPV6               1           /* compile with ipv6 support */
+#endif
 #define HAVE_AUTHOR_CHECK       1           /* built-in author online/onchan check */
+
+/* SSL support (OpenSSL) - enabled via ./configure --with-ssl */
+/* #define HAVE_SSL 1 */
 
 #define _NO_LAME_ERRNO          1           /* no lame errno while on kill socket */
 
@@ -24,8 +31,8 @@
 #define NO_IDENT_ADDR_CHECK     1           /* no checking destination addr on accepting connection */
 #define NO_IDENT_FILE           ".no-ident" /* no ident check file */
 
-#define CLONER_VERSION_INT      "2000300"
-#define CLONER_VERSION_STR      "0.2.3"
+#define CLONER_VERSION_INT      "3000000"
+#define CLONER_VERSION_STR      "0.3.0"
 #define CLONER_AUTHOR           "Esio"
 #define CLONER_EMAIL            "esio(at)hoth.amu.edu.pl"
 #define CLONER_NAME             "cloner"
@@ -43,7 +50,7 @@
 #endif
 
 #ifdef DEBUG
-#define DEBUG_FILE 	            "debug.log"
+#define DEBUG_FILE              "debug.log"
 #endif
 
 #ifdef SUNOS
@@ -57,6 +64,5 @@
 #endif
 
 #ifndef INADDR_NONE
-#define INADDR_NONE 	        (-1)
+#define INADDR_NONE             (-1)
 #endif
-
