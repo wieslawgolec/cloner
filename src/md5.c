@@ -341,27 +341,31 @@ void MD5HexHash(char digest[33], char *data, int datalen, unsigned char *key, in
 {
 	int i;
 	unsigned char buf[16];
+	static const char hex[] = "0123456789abcdef";
 
-	memset(digest, 0, 33);
 	MD5Hash(buf, data, datalen, key, keylen);
 
-	memset(digest, 0 , 33);
-	for(i=0; i<16; ++i)
-		sprintf(digest, "%s%02x", digest, (unsigned int)buf[i]);
+	for (i = 0; i < 16; ++i) {
+		digest[i * 2]     = hex[(buf[i] >> 4) & 0xf];
+		digest[i * 2 + 1] = hex[buf[i] & 0xf];
+	}
 	digest[32] = '\0';
 }
 
 void MD5CreateAuthString(char *str, int len)
 {
 	int i;
+	static const char hex[] = "0123456789abcdef";
 
-	srand(time(NULL));
-	memset(str, 0, len);
+	srand((unsigned)time(NULL));
+	memset(str, 0, (size_t)len + 1);
 
 	/* len must be even */
-	for(i=0; i<len/2; ++i)
-		sprintf(str, "%s%02x", str, (unsigned int)(rand() % 255 + 1));
-
+	for (i = 0; i < len / 2; ++i) {
+		unsigned int r = (unsigned int)(rand() % 255 + 1);
+		str[i * 2]     = hex[(r >> 4) & 0xf];
+		str[i * 2 + 1] = hex[r & 0xf];
+	}
 	str[len] = '\0';
 }
 
