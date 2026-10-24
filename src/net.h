@@ -4,10 +4,17 @@ unsigned short int is_valid_ip(const char *ip);
 unsigned int resolve_host(const char *host);
 /* get next vhost index */
 unsigned short int get_next_vhost_id();
-/* write to a socket */
+/* write to a socket (SSL-aware when HAVE_SSL) */
 int sock_write(int fd, char *format, ...);
-/* kill socket (shutdown and close) */
+/* kill socket (shutdown and close), also free SSL if present */
 void kill_socket(int fd);
+#ifdef HAVE_SSL
+int init_ssl(void);
+void cleanup_ssl(void);
+int ssl_connect_clone(struct clone_connection *conn);
+int ssl_read(void *ssl, char *buf, int len);
+int ssl_write(void *ssl, const char *buf, int len);
+#endif
 /* connect client using ipv4, non-blocking */
 void connect4_clone(struct clone_connection *conn);
 #ifdef HAVE_IPV6
