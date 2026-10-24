@@ -7,57 +7,39 @@ on:
     branches: [ main ]
 
 jobs:
-  build:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, ubuntu-22.04, ubuntu-20.04, macos-latest]
-        ssl: [auto, without]
+  ubuntu:
+    runs-on: ubuntu-latest
+    name: Ubuntu
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install dependencies (Linux)
-        if: runner.os == 'Linux'
+      - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential libssl-dev pkg-config
-
-      - name: Install dependencies (macOS)
-        if: runner.os == 'macOS'
-        run: |
-          brew install openssl pkg-config
-
-      - name: Configure
+      - name: Configure and build
         working-directory: src
         run: |
           chmod +x configure configure.sh
-          if [ "${{ matrix.ssl }}" = "without" ]; then
-            bash configure --without-validator --without-ssl
-          else
-            bash configure --without-validator
-          fi
+          bash configure --without-validator
+          make dynamic
+          ls -la ../cloner* || true
+          file ../cloner* || true
 
-      - name: Build dynamic
+  macos:
+    runs-on: macos-latest
+    name: macOS
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: brew install openssl pkg-config
+      - name: Configure and build
         working-directory: src
         run: |
-          make dynamic || make -f Makefile.dynamic
-
-      - name: Build static (Linux only)
-        if: runner.os == 'Linux'
-        working-directory: src
-        run: make static || true
-
-      - name: Show binary info
-        working-directory: src
-        run: |
-          echo "=== Build artifacts ==="
-          ls -la ../cloner* 2>/dev/null || ls -la . || true
-          file ../cloner* 2>/dev/null || true
-
-      - name: Clean
-        working-directory: src
-        run: make clean || true
+          chmod +x configure configure.sh
+          bash configure --without-validator
+          make dynamic
+          ls -la ../cloner* || true
+          file ../cloner* || true
 
   freebsd:
     runs-on: ubuntu-latest
@@ -69,7 +51,7 @@ jobs:
         with:
           usesh: true
           prepare: |
-            pkg install -y gmake gcc openssl pkgconf
+            pkg install -y gmake gcc openssl pkgconf bash
           run: |
             cd src
             chmod +x configure configure.sh
