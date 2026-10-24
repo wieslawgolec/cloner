@@ -19,11 +19,13 @@ jobs:
       - name: Configure and build
         working-directory: src
         run: |
+          set -e
           chmod +x configure configure.sh
           bash configure --without-validator
-          make dynamic
-          ls -la ../cloner* || true
-          file ../cloner* || true
+          make -f Makefile.dynamic V=1
+          ls -la
+          ls -la ../cloner* 
+          file ../cloner*
 
   macos:
     runs-on: macos-latest
@@ -35,11 +37,13 @@ jobs:
       - name: Configure and build
         working-directory: src
         run: |
+          set -e
           chmod +x configure configure.sh
           bash configure --without-validator
-          make dynamic
-          ls -la ../cloner* || true
-          file ../cloner* || true
+          make -f Makefile.dynamic V=1
+          ls -la
+          ls -la ../cloner*
+          file ../cloner*
 
   freebsd:
     runs-on: ubuntu-latest
@@ -53,8 +57,10 @@ jobs:
           prepare: |
             pkg install -y gmake gcc openssl pkgconf bash
           run: |
+            set -e
             cd src
             chmod +x configure configure.sh
             bash configure --without-validator
-            gmake dynamic || make dynamic
-            ls -la ../cloner* || true
+            gmake -f Makefile.dynamic V=1
+            ls -la
+            ls -la ../cloner*
