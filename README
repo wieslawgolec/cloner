@@ -11,45 +11,44 @@
  *
  * Original re-release (binary only): 2013.12.12. please don't abuse.
  *
- * == Modernization (v0.3.0 - 2026) ==
- * - Updated to build on modern 64-bit systems (Linux, macOS) while keeping
- *   compatibility with older systems previously supported.
- * - Dropped forced -m32; builds native architecture by default.
- * - Preparing SSL/TLS support for IRCNet 2.11+/2.12.0-pre servers
- *   (ports typically 6697). OpenSSL integration in progress.
- * - GitHub Actions CI added to verify builds on multiple OS versions
- *   (Ubuntu latest/22.04/20.04, macOS).
- * - Version bumped to 0.3.0.
+ * == v0.3.0 (2026) - Modernization ==
+ *
+ * - Builds natively on modern 64-bit systems (Linux, macOS, FreeBSD).
+ *   Optional --with-32bit if you still need it.
+ * - OpenSSL SSL/TLS support for IRCNet 2.11+ / 2.12.0-pre servers
+ *   (typical port 6697). Auto-detected at configure time.
+ * - GitHub Actions CI: Ubuntu, macOS, FreeBSD.
+ * - Code hygiene (vsnprintf, includes, dependencies).
+ * - Full backward compatibility: plain TCP still works exactly as before.
  *
  * Build:
  *   cd src
- *   ./configure [--with-ipv6] [--without-validator] [--with-ssl]
- *   make dynamic   # preferred
+ *   ./configure [--with-ssl] [--without-ssl] [--without-validator] [--with-32bit]
+ *   make dynamic          # preferred
  *   # or: make static / make debug
  *
- * Usage (unchanged core):
+ * Usage:
  *   ./cloner <server> [port] [number] [delay] [ip vhost file]
- *   Default port 6667. For SSL servers use port 6697 (SSL support WIP).
+ *   Default port 6667 (plain). Port 6697 or explicit SSL build uses TLS.
+ *
+ * SSL notes:
+ *   Requires OpenSSL at build time. Certificate verification is currently
+ *   disabled (common for this class of tool); can be tightened later.
+ *   IRCNet servers may send "Your connection is secure (SSL/TLS)" NOTICE
+ *   and WHOIS "is a Secure Connection".
  *
  * about fast mode: it's a lot faster but sometimes it can be a disatvantage.
  * when in fast mode, the cloner assumes that after it sends an op command,
  * then it doesn't wait for the irc server's answer but goes on with the opped
  * client right then. when the lags are small (check out with the lag command)
  * and you have a good connection, then fast mode is really cool! 100 clones
- * can op each other in a millisecond. the problem is when you're lagged. for
- * example client1 ops client2, and client2 ops client3 right after, but when
- * the lag calculations are not correct, ircd sees this: client2 opped client3
- * and then client1 opped client2. so client3 won't have chanop status and
- * the whole thing is messed up.
+ * can op each other in a millisecond. the problem is when you're lagged.
  *
  * note about testing it against other similar software: when you test it on
  * small, local networks, beware: the last connected client gets processed
- * first in ircd, i.e. the process order and connect order are reverse. if you
- * want a good testing environment, connect the two (or more) cloners at about
- * the same time and same delay. however, on small networks, the last connected
- * client will _always_ have an advantage.
+ * first in ircd, i.e. the process order and connect order are reverse.
  *
  * as i mentioned, it's buggy. it doesn't care about channel modes, it always
  * assumes the clients are not banned, channel can be joined, etc.
  *
- * See CHANGELOG for history. Contributions / fixes welcome on the develop branch.
+ * See CHANGELOG for full history. Work continues on the develop branch.
