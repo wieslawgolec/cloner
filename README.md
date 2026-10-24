@@ -5,7 +5,7 @@
                     	 _/        _/  _/    _/  _/    _/  _/_/_/_/  _/_/
                     	_/        _/  _/    _/  _/    _/  _/        _/
                     	 _/_/_/  _/    _/_/    _/    _/    _/_/_/  _/
-              simple, unoptimized, maybe buggy irc cloner program BUT IT ROCKS.
+                    simple, unoptimized, maybe buggy irc cloner program BUT IT ROCKS.
 
 IRC channel cloner for IRCNet-style networks. Based on [joco] cloner (jococloner).
 
