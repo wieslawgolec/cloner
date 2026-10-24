@@ -24,6 +24,11 @@
 #include <sys/socket.h>         /* AF_INET, AF_INET6 */
 #include <sys/utsname.h>        /* utsname */
 
+#ifdef HAVE_SSL
+#include <openssl/ssl.h>
+#include <openssl/err.h>
+#endif
+
 #include "defines.h"
 #include "structs.h"
 #include "globals.h"
