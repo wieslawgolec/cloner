@@ -84,8 +84,7 @@ echo "#
 # Warning! All changes made in this file will be lost!
 #
 
-# IMPORTANT: the real target must be the first target in the file
-# otherwise 'make -f Makefile.xxx' only builds the first rule it sees.
+# The real target MUST be the first target in the file.
 
 CC = gcc
 OUT = $OUT
@@ -97,6 +96,17 @@ OBJS = $OBJS
 $TARGET: key.h \$(OBJS)
 	@echo '-+- Linking \$(OUT)'
 	@\$(CC) \$(OBJS) -o \$(OUT) \$(CFLAGS) \$(LFLAGS)
+	@echo '-+- Stripping debug information'
+	@strip \$(OUT) || true
+	@if [ -f validate.c ] && [ -f key.h ]; then \\
+		echo '-+- Building validator'; \\
+		\$(CC) md5.o -o validator validator.c $ARCHFLAGS || true; \\
+		if [ -x ./validator ]; then echo '-+- Patching file'; ./validator \$(OUT); fi; \\
+	fi
+	@mv \$(OUT) ../\$(OUT)
+	@rm -fr ../cloner
+	@ln -s \$(OUT) ../cloner
+	@echo '-+- Done'
 
 .SUFFIXES: .c .o
 
@@ -114,7 +124,8 @@ key.h:
 
 function makefile_done()
 {
-	echo "	@echo '-+- Done'" >> Makefile.$TARGET
+	# no longer needed; full recipe is inside makefile_up
+	true
 }
 
 function makefile_release()
@@ -142,16 +153,8 @@ echo "	@echo '-+- Creating release'
 
 function makefile_world()
 {
-echo "	@echo -+- Stripping debug information
-	@strip \$(OUT)
-	@if [ -f validate.c ] && [ -f key.h ]; then \\
-		echo '-+- Building validator'; \\
-		\$(CC) md5.o -o validator validator.c $ARCHFLAGS || true; \\
-		if [ -x ./validator ]; then echo '-+- Patching file'; ./validator \$(OUT); fi; \\
-	fi
-	@mv \$(OUT) ../\$(OUT)
-	@rm -fr ../cloner
-	@ln -s \$(OUT) ../cloner" >> Makefile.$TARGET
+	# now empty - full recipe is in makefile_up
+	true
 }
 
 function makefile_deb()
@@ -328,7 +331,7 @@ function make_echo()
 function make_me()
 {
     makefile_up
-    makefile_world
+    # makefile_world is now a no-op; full recipe lives in makefile_up
 }
 
 function do_dynamic()
