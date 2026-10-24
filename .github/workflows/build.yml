@@ -1,0 +1,57 @@
+name: Build
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-22.04, ubuntu-20.04, macos-latest]
+        include:
+          - os: ubuntu-latest
+            extra_cflags: ""
+          - os: ubuntu-22.04
+            extra_cflags: ""
+          - os: ubuntu-20.04
+            extra_cflags: ""
+          - os: macos-latest
+            extra_cflags: ""
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libssl-dev
+
+      - name: Install dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install openssl
+
+      - name: Configure
+        working-directory: src
+        run: |
+          ./configure --without-validator
+          # Force remove -m32 for modern 64-bit support
+          sed -i.bak 's/-m32//g' Makefile.* || true
+
+      - name: Build dynamic
+        working-directory: src
+        run: make dynamic || make -f Makefile.dynamic
+
+      - name: Build static (Linux only)
+        if: runner.os == 'Linux'
+        working-directory: src
+        run: make static || true
+
+      - name: Clean
+        working-directory: src
+        run: make clean || true
