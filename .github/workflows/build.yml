@@ -1,0 +1,63 @@
+name: Build
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  ubuntu:
+    runs-on: ubuntu-latest
+    name: Ubuntu
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libssl-dev pkg-config
+      - name: Configure and build
+        working-directory: src
+        run: |
+          set -e
+          chmod +x configure configure.sh
+          bash configure --without-validator
+          make dynamic
+          ls -la ../cloner*
+          file ../cloner*
+
+  macos:
+    runs-on: macos-latest
+    name: macOS
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: brew install openssl pkg-config
+      - name: Configure and build
+        working-directory: src
+        run: |
+          set -e
+          chmod +x configure configure.sh
+          bash configure --without-validator
+          make dynamic
+          ls -la ../cloner*
+          file ../cloner*
+
+  freebsd:
+    runs-on: ubuntu-latest
+    name: FreeBSD
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build on FreeBSD
+        uses: vmactions/freebsd-vm@v1
+        with:
+          usesh: true
+          prepare: |
+            pkg install -y gmake gcc openssl pkgconf bash
+          run: |
+            set -e
+            cd src
+            chmod +x configure configure.sh
+            bash configure --without-validator
+            gmake dynamic || make dynamic
+            ls -la ../cloner*

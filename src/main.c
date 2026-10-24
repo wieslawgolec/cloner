@@ -97,6 +97,18 @@ int main(int argc, char *argv[])
 	if(delay > MAX_CONNECT_DELAY)
 	    error("delay not 0..%i", MAX_CONNECT_DELAY);	
 
+#ifdef HAVE_SSL
+    /* Auto-enable SSL for the conventional secure port */
+    if (ntohs(server.port) == DEFAULT_SSL_PORT) {
+        server.use_ssl = 1;
+        printf("> SSL/TLS enabled (port %d)\n", DEFAULT_SSL_PORT);
+    }
+    if (server.use_ssl) {
+        if (!init_ssl())
+            error("failed to initialise OpenSSL");
+    }
+#endif
+
     if(argc > 5) /* vhosts file on the end */
         load_vhosts(argv[5]);
     else // check for default vhosts file
@@ -232,6 +244,9 @@ int main(int argc, char *argv[])
         }		
 	}
 
+#ifdef HAVE_SSL
+    cleanup_ssl();
+#endif
 	return 0;
 }
 

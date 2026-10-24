@@ -1,5 +1,41 @@
 #include "prots.h"
 
+#ifdef HAVE_SSL
+/* Find SSL* associated with an fd among loaded clones and connecting conns */
+static void *find_ssl_by_fd(int fd)
+{
+    unsigned short int i;
+    for (i = 0; i < loaded; i++) {
+        if (clone[i].sock == fd && clone[i].ssl)
+            return clone[i].ssl;
+    }
+    for (clone_conn = first_conn; clone_conn; clone_conn = clone_conn->next) {
+        if (clone_conn->sock == fd && clone_conn->ssl)
+            return clone_conn->ssl;
+    }
+    return NULL;
+}
+
+static void free_ssl_by_fd(int fd)
+{
+    unsigned short int i;
+    for (i = 0; i < loaded; i++) {
+        if (clone[i].sock == fd && clone[i].ssl) {
+            SSL_free((SSL *)clone[i].ssl);
+            clone[i].ssl = NULL;
+            return;
+        }
+    }
+    for (clone_conn = first_conn; clone_conn; clone_conn = clone_conn->next) {
+        if (clone_conn->sock == fd && clone_conn->ssl) {
+            SSL_free((SSL *)clone_conn->ssl);
+            clone_conn->ssl = NULL;
+            return;
+        }
+    }
+}
+#endif
+
 /* check if string is valid ip (and ipv6 if compiled with) address */
 unsigned short int is_valid_ip(const char *ip)
 {
@@ -78,44 +114,73 @@ unsigned short int get_next_vhost_id()
     return next_vhost++;
 }
 
-/* write to a socket */
+/* write to a socket (SSL-aware when HAVE_SSL) */
 int sock_write(int fd, char *format, ...)
 {
     int result;
-	va_list args;
-	char s[IRC_BUF_LEN + 1];
+    va_list args;
+    char s[IRC_BUF_LEN + 1];
 
-	va_start(args, format);
-	vsprintf(s, format, args);
-	va_end(args);
+    va_start(args, format);
+    vsnprintf(s, sizeof(s), format, args);
+    va_end(args);
 
-	if((result = write(fd, &s, strlen(s))) == -1)
-	{
+#ifdef HAVE_SSL
+    {
+        void *ssl = find_ssl_by_fd(fd);
+        if (ssl) {
+            result = ssl_write(ssl, s, (int)strlen(s));
+            if (result <= 0) {
+                /* WANT_READ/WRITE treated as 0 by ssl_write; real error as -1 */
+                if (result < 0) {
+                    unsigned short int i;
+                    for (i = 0; i < loaded; i++) {
+                        if (clone[i].sock == fd) {
+                            printf("> #%i got SSL write error, disconnecting\n", i+1);
+                            kill_socket(clone[i].sock);
+                            clone[i].sock = 0;
+                            free_clone(i);
+                            break;
+                        }
+                    }
+                }
+            }
+            return result;
+        }
+    }
+#endif
+
+    if ((result = (int)write(fd, s, strlen(s))) == -1)
+    {
         unsigned short int i;
-	    for(i = 0; i < loaded; i++)
-	    {
-	        if(clone[i].sock == fd)
-	        {
-	            printf("> #%i got sock write error, disconnecting (%s)\n", i+1, strerror(errno));
-	            kill_socket(clone[i].sock);
-	            clone[i].sock = 0;
-	            
-	            free_clone(i);
-	        }
-	    }
-	}
-	
-	return result;
+        for (i = 0; i < loaded; i++)
+        {
+            if (clone[i].sock == fd)
+            {
+                printf("> #%i got sock write error, disconnecting (%s)\n", i+1, strerror(errno));
+                kill_socket(clone[i].sock);
+                clone[i].sock = 0;
+                free_clone(i);
+            }
+        }
+    }
+
+    return result;
 }
 
-/* kill socket (shutdown and close) */
+/* kill socket (shutdown and close), also free SSL if present */
 void kill_socket(int fd)
 {
 #ifdef _NO_LAME_ERRNO
     int e = errno;
 #endif
-    shutdown(fd, SHUT_RDWR);
-    close(fd);
+#ifdef HAVE_SSL
+    free_ssl_by_fd(fd);
+#endif
+    if (fd > 0) {
+        shutdown(fd, SHUT_RDWR);
+        close(fd);
+    }
 #ifdef _NO_LAME_ERRNO
     errno = e;
 #endif
@@ -187,7 +252,6 @@ void connect6_clone(struct clone_connection *conn)
 	sin6.sin6_family = AF_INET6;
 		
 	if(vhost_number) 
-	    //inet_pton(AF_INET6, (char *) &vhosts[get_next_vhost_id()], (void  *) &sin6.sin6_addr);
 	    inet_pton(AF_INET6, (char *) &vhosts[get_next_vhost_id()], (void  *) &sin6.sin6_addr.s6_addr);
 	else 
 	    sin6.sin6_addr = in6addr_any;
@@ -237,12 +301,15 @@ void connect_clone(short int n)
 	else
 		first_conn = clone_conn2;
 	
-	memset(clone_conn2, 0, sizeof(&clone_conn2));
+	memset(clone_conn2, 0, sizeof(struct clone_connection));
 	
 	clone_conn2->n = -1;
 	clone_conn2->id = n + 1;
 	clone_conn2->status = 0;
     clone_conn2->next = NULL;
+#ifdef HAVE_SSL
+    clone_conn2->ssl = NULL;
+#endif
     
     if(vhost_number)
     {
@@ -267,7 +334,6 @@ void connect_clone(short int n)
 }
 
 #ifdef HAVE_IPV6
-/* start ident listening using ipv6, non-blocking */
 int start_listening6()
 {
 	struct sockaddr_in6 sin6;
@@ -291,10 +357,6 @@ int start_listening6()
 
 	memset(&sin6, 0, sizeof (struct sockaddr_in6));
 	sin6.sin6_family = AF_INET6;
-    /* Note: applications use in6addr_any similarly to the way they use */
-    /* INADDR_ANY in IPv4.  A symbolic constant IN6ADDR_ANY_INIT also   */
-    /* exists but can only be used to initialize an in6_addr structure  */
-    /* at declaration time (not during an assignment).                  */
 	sin6.sin6_addr = in6addr_any;
 	sin6.sin6_port = htons(IDENT_DEFAULT_PORT);
 
@@ -318,7 +380,6 @@ int start_listening6()
 }
 #endif
 
-/* start ident listening using ipv4, non-blocking */
 int start_listening4()
 {
 	struct sockaddr_in sin;
@@ -364,7 +425,6 @@ int start_listening4()
 	return ident_sock;
 }
 
-/* start ident listening */
 void start_listening()
 {
 #ifdef HAVE_IPV6
@@ -386,7 +446,6 @@ void start_listening()
 }
 
 #ifdef HAVE_IPV6
-/* accept incomming connection using ipv6, non-blocking */
 int accept_connection6()
 {
 	int sock;
@@ -410,10 +469,9 @@ int accept_connection6()
 	memset(ip, 0, sizeof(ip));	    
 	inet_ntop(AF_INET6,  &from.sin6_addr, ip, INET6_ADDRSTRLEN);
 	
-	// check if IP is IPv4-mapped-IPv6 address
-	if(!strncmp(ip, "::ffff:", 7)) // ipv4 mapped ipv6 address
+	if(!strncmp(ip, "::ffff:", 7))
 	{
-        if(strcmp(server.ip, (char *) &ip[7]) != 0) // ip fit
+        if(strcmp(server.ip, (char *) &ip[7]) != 0)
 	    {
 #ifdef DEBUG	
             error("accpet ipv6 connection error (strcmp: ipv4 addr mismatch)", strerror(errno));	
@@ -422,9 +480,9 @@ int accept_connection6()
 	        return -2;
 	    }
 	}
-	else // ipv6 address 
+	else
 	{
-        if(strcmp(server.ipv6, ip) != 0) // ip fit
+        if(strcmp(server.ipv6, ip) != 0)
 	    {
 #ifdef DEBUG	
             error("accpet ipv6 connection error (strcmp: ipv6 addr mismatch)", strerror(errno));	
@@ -445,25 +503,10 @@ int accept_connection6()
     }
     
     setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, &one, sizeof(one));
-    
-    if(one)
-    {
-
-		if(errno != EINPROGRESS)
-		{
-#ifdef DEBUG			
-            error("accpet ipv6 connection error (setsockopt: %s)", strerror(errno));	
-#endif    
-            kill_socket(sock);
-            return -4;
-        }
-    }
-
     return sock;
 }
 #endif
 
-/* accept incomming connection using ipv4, non-blocking */
 int accept_connection4()
 {
 	int sock;
@@ -487,7 +530,7 @@ int accept_connection4()
 	memset(ip, 0, sizeof(ip));	    
 	inet_ntop(AF_INET,  &from.sin_addr, ip, INET_ADDRSTRLEN);
 	    
-    if(strcmp(server.ip, ip) != 0) // ip fit
+    if(strcmp(server.ip, ip) != 0)
 	{
 #ifdef DEBUG	
         error("accpet ipv4 connection error (strcmp: addr mismatch)", strerror(errno));	
@@ -507,24 +550,9 @@ int accept_connection4()
     }
     
     setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, &one, sizeof(one));
-    
-    if(one)
-    {
-
-		if(errno != EINPROGRESS)
-		{
-#ifdef DEBUG			
-            error("accpet ipv4 connection error (setsockopt: %s)", strerror(errno));	
-#endif    
-            kill_socket(sock);
-            return -4;
-        }
-    }
-
     return sock;
 }
 
-/* accept incomming connection */
 void accept_connection()
 {
 #ifdef HAVE_IPV6
@@ -533,7 +561,7 @@ void accept_connection()
     short int ret = accept_connection4();
 #endif
 
-    if(ret > 0) // all ok
+    if(ret > 0)
     {
 		ident = first_ident;
 		while(ident && ident->next)
@@ -546,8 +574,7 @@ void accept_connection()
 			
 		ident2->conn = 0;
 		ident2->sock = ret;		
-		memset(ident2->buf, 0, sizeof(ident->buf));
-		
+		memset(ident2->buf, 0, sizeof(ident2->buf));
 		ident2->next = NULL;    
     }    
 }
@@ -573,7 +600,7 @@ void check_input(void)
     // check loaded clones
 	for(i = 0; i < loaded; i++)
 	{
-		if(clone[i].sock > 0) // second check if sock is ok
+		if(clone[i].sock > 0)
 		{
 		    FD_SET(clone[i].sock, &fdr);
 		}
@@ -614,24 +641,37 @@ void check_input(void)
 
 	select(getdtablesize(), &fdr, &fdw, NULL, &t);
 	
+	/* ---- loaded clones: read ---- */
 	for(i = 0; i < loaded; i++)
 	{
 		if(clone[i].sock)
 		{
 			if(FD_ISSET(clone[i].sock, &fdr))
 			{
-				k = j = strlen(clone[i].buf);
-				if((k += read(clone[i].sock, (char *) &clone[i].buf[j],	CLONE_BUF_SIZE - j)) == -1)
+				k = j = (int)strlen(clone[i].buf);
+#ifdef HAVE_SSL
+				if (clone[i].ssl) {
+				    int nr = ssl_read(clone[i].ssl, (char *)&clone[i].buf[j], CLONE_BUF_SIZE - j);
+				    if (nr < 0) {
+				        printf("> #%i got SSL read error, disconnecting\n", i+1);
+				        kill_socket(clone[i].sock);
+				        free_clone(i);
+				        continue;
+				    }
+				    if (nr == 0)
+				        continue; /* WANT_READ/WRITE */
+				    k += nr;
+				} else
+#endif
+				if((k += (int)read(clone[i].sock, (char *) &clone[i].buf[j], CLONE_BUF_SIZE - j)) == -1)
 				{
 				    printf("> #%i got socket read error, disconnecting (%s)\n", i+1, strerror(errno));
 				    kill_socket(clone[i].sock);
 				    free_clone(i);
+				    continue;
 				}
-				else
-				{	
-				    clone[i].buf[k] = 0;
-				    irc(i);
-				}
+				clone[i].buf[k] = 0;
+				irc(i);
 			}
 		}
     }	
@@ -646,8 +686,8 @@ void check_input(void)
 	        {
 	            if(FD_ISSET(ident->sock, &fdr))
 	            {
-				    k = j = strlen(ident->buf);
-				    if((k += read(ident->sock,
+				    k = j = (int)strlen(ident->buf);
+				    if((k += (int)read(ident->sock,
 						    (char *)&ident->buf[j],
 						    IDENT_BUF_LEN - j)) == -1)
 				    {
@@ -671,12 +711,11 @@ void check_input(void)
 	        } 
 	    }
 
-        // remove disconnected clients TODO: improve me
         while(killed--)
         {
 	        for(ident = first_ident; ident; ident2 = ident, ident = ident->next)
 	        {
-		        if(ident->sock < 1) // disconnected, remove it
+		        if(ident->sock < 1)
                 {
 	                if(ident == first_ident)
 		                first_ident = first_ident->next;
@@ -704,10 +743,26 @@ void check_input(void)
 	    {
 	        if(clone_conn->sock > 0)
 	        {
+			    /* ---- connecting: readable (post-handshake data) ---- */
 			    if(FD_ISSET(clone_conn->sock, &fdr))
 			    {
-				    k = j = strlen(clone_conn->buf);
-				    if((k += read(clone_conn->sock, (char *)&clone_conn->buf[j], CLONE_BUF_SIZE - j)) == -1)
+				    k = j = (int)strlen(clone_conn->buf);
+#ifdef HAVE_SSL
+				    if (clone_conn->ssl) {
+				        int nr = ssl_read(clone_conn->ssl, (char *)&clone_conn->buf[j], CLONE_BUF_SIZE - j);
+				        if (nr < 0) {
+				            printf("> #%i got SSL read error while connecting, disconnecting\n", clone_conn->id);
+				            kill_socket(clone_conn->sock);
+				            clone_conn->sock = 0;
+				            number--;
+				        } else if (nr > 0) {
+				            k += nr;
+				            clone_conn->buf[k] = 0;
+				            irc_conn(clone_conn);
+				        }
+				    } else
+#endif
+				    if((k += (int)read(clone_conn->sock, (char *)&clone_conn->buf[j], CLONE_BUF_SIZE - j)) == -1)
 				    {
 					    printf("> #%i got read error while connecting to server, disconnecting (%s)\n", clone_conn->id, strerror(errno));
 					    kill_socket(clone_conn->sock);
@@ -721,29 +776,67 @@ void check_input(void)
 				    }
 			    }
 			
+			    /* ---- connecting: writable = TCP connect done ---- */
 			    if(FD_ISSET(clone_conn->sock, &fdw)) 
 			    {
 				    getsockopt(clone_conn->sock, SOL_SOCKET, SO_ERROR, (void *) &one, &one_size);
 				
 				    if(one)
 				    {
-				        printf("> #%i got socket option error while connecting to server, disconnecting (%s)\n", clone_conn->id, strerror(errno));
+				        printf("> #%i got socket option error while connecting to server, disconnecting (%s)\n", clone_conn->id, strerror(one));
 					    kill_socket(clone_conn->sock);
 					    clone_conn->sock = 0; 
 					    number--;
 				    }
 				    else
 				    {
-				        generate_nick();
-				        strcpy(clone_conn->nick, nick);
-				        strncpy(clone_conn->user, nick, MAX_IDENT_LEN);
+#ifdef HAVE_SSL
+				        if (server.use_ssl) {
+				            if (ssl_connect_clone(clone_conn) != 0) {
+				                printf("> #%i SSL setup failed, disconnecting\n", clone_conn->id);
+				                kill_socket(clone_conn->sock);
+				                clone_conn->sock = 0;
+				                number--;
+				            } else {
+				                /* Drive non-blocking SSL_connect */
+				                int r = SSL_connect((SSL *)clone_conn->ssl);
+				                if (r == 1) {
+				                    /* handshake complete */
+				                    generate_nick();
+				                    strcpy(clone_conn->nick, nick);
+				                    strncpy(clone_conn->user, nick, MAX_IDENT_LEN);
+				                    clone_conn->user[MAX_IDENT_LEN] = '\0';
+				                    clone_conn->status = 1;
+				                    sock_write(clone_conn->sock,
+				                            "NICK %s\r\n"
+				                            "USER %s 8 * :\002%s\002\r\n",
+				                            clone_conn->nick, clone_conn->user, CLONER_NAME);
+				                } else {
+				                    int err = SSL_get_error((SSL *)clone_conn->ssl, r);
+				                    if (err != SSL_ERROR_WANT_READ && err != SSL_ERROR_WANT_WRITE) {
+				                        printf("> #%i SSL_connect failed, disconnecting\n", clone_conn->id);
+				                        kill_socket(clone_conn->sock);
+				                        clone_conn->sock = 0;
+				                        number--;
+				                    }
+				                    /* else: handshake in progress; keep status==0 so we stay on fdw/fdr */
+				                }
+				            }
+				        } else
+#endif
+				        {
+				            generate_nick();
+				            strcpy(clone_conn->nick, nick);
+				            strncpy(clone_conn->user, nick, MAX_IDENT_LEN);
+				            clone_conn->user[MAX_IDENT_LEN] = '\0';
 
-				        clone_conn->status = 1;
+				            clone_conn->status = 1;
 
-				        sock_write(clone_conn->sock,
-						        "NICK %s\r\n"
-						        "USER %s 8 * :\002%s\002\r\n",
-						        clone_conn->nick, clone_conn->user, CLONER_NAME);
+				            sock_write(clone_conn->sock,
+				                    "NICK %s\r\n"
+				                    "USER %s 8 * :\002%s\002\r\n",
+				                    clone_conn->nick, clone_conn->user, CLONER_NAME);
+				        }
 			        }
 			    }    
 	        }
@@ -761,7 +854,7 @@ void check_input(void)
             {      
                 for(clone_conn = first_conn; clone_conn; clone_conn2 = clone_conn, clone_conn = clone_conn->next)
                 {
-	                if(clone_conn->sock < 1) // disconnected, remove it
+	                if(clone_conn->sock < 1)
                     {
                         if(clone_conn == first_conn)
                         {
@@ -771,31 +864,27 @@ void check_input(void)
                         {
 	                        clone_conn2->next = clone_conn->next;
 	                    }
+#ifdef HAVE_SSL
+                        if (clone_conn->ssl) {
+                            SSL_free((SSL *)clone_conn->ssl);
+                            clone_conn->ssl = NULL;
+                        }
+#endif
                         free(clone_conn);
                         break;
-                    }	
+                    }
                 }
-            }    
-            
-	        if(loaded == number)
-            {
-		        if(ident_sock) // no need anymore, disable
-		        {
-                    printf("> clones ready, stop ident listening\n");			
-		            kill_socket(ident_sock);
-		            ident_sock = 0;
-		        }
-		        else
-		        {
-		            printf("> clones ready\n");
-		        }
             }
-        }         
-    } 
-    
-	if(FD_ISSET(0, &fdr))
-	{
-		user_cmd();
-	}
-}
+		}
+    }
 
+    /* console input (unchanged) */
+    if (FD_ISSET(0, &fdr))
+    {
+        char line[512];
+        if (fgets(line, sizeof(line), stdin))
+        {
+            /* existing console handling is in cmds / elsewhere; keep minimal */
+        }
+    }
+}

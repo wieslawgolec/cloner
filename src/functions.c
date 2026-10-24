@@ -3,9 +3,17 @@
 void propaganda()
 {
 #ifdef HAVE_IPV6
+#ifdef HAVE_SSL
+    printf("> %s v%s-ipv6+ssl by %s (%s)\n", CLONER_NAME, CLONER_VERSION_STR, CLONER_AUTHOR, CLONER_EMAIL);
+#else
     printf("> %s v%s-ipv6 by %s (%s)\n", CLONER_NAME, CLONER_VERSION_STR, CLONER_AUTHOR, CLONER_EMAIL);
+#endif
+#else
+#ifdef HAVE_SSL
+    printf("> %s v%s+ssl by %s (%s)\n", CLONER_NAME, CLONER_VERSION_STR, CLONER_AUTHOR, CLONER_EMAIL);
 #else
     printf("> %s v%s by %s (%s)\n", CLONER_NAME, CLONER_VERSION_STR, CLONER_AUTHOR, CLONER_EMAIL);
+#endif
 #endif
 #ifdef DEBUG
     printf("> based on jococloner (debug build: %s %s)\n", __DATE__, __TIME__);
@@ -39,6 +47,7 @@ void generate_nick()
 void usage(char *prg)
 {
 	printf("%s <server> [port] [number] [delay] [ip vhost file]\n", prg);
+	printf("  port 6697 or --ssl enables SSL/TLS (requires OpenSSL build)\n");
 	exit(0);
 }
 
@@ -49,7 +58,7 @@ void error(char *format, ...)
 	char s[IRC_BUF_LEN + 1];
 
 	va_start(args, format);
-	vsprintf(s, format, args);
+	vsnprintf(s, sizeof(s), format, args);
 	va_end(args);
 	
 	printf("error: %s\n", s);
@@ -153,6 +162,9 @@ void init_clone(int n, struct clone_connection *conn)
         
         clone[n].msg = 0;
         clone[n].sock = conn->sock;
+#ifdef HAVE_SSL
+        clone[n].ssl = conn->ssl;
+#endif
         clone[n].penalty = conn->penalty;
         
 #ifdef HAVE_AUTHOR_CHECK		
@@ -172,6 +184,13 @@ void free_clone(int n)
 {
     unsigned int i = 0;
     
+#ifdef HAVE_SSL
+    if (clone[n].ssl) {
+        SSL_free((SSL *)clone[n].ssl);
+        clone[n].ssl = NULL;
+    }
+#endif
+
     // clear userlist
     if(clone[n].first_user)
     {
@@ -215,6 +234,10 @@ void free_clone(int n)
         strcpy(clone[n].uid, clone[loaded - 1].uid);        
         
         clone[n].sock = clone[loaded - 1].sock;
+#ifdef HAVE_SSL
+        clone[n].ssl = clone[loaded - 1].ssl;
+        clone[loaded - 1].ssl = NULL;
+#endif
         strncpy(clone[n].buf, clone[loaded - 1].buf, CLONE_BUF_SIZE);
         clone[n].penalty = clone[loaded - 1].penalty;
         clone[n].msg = clone[loaded - 1].msg;
@@ -259,7 +282,7 @@ void debug(int n, char *format, ...)
 	FILE *f;
 	char fn[NICK_LEN + 10];
 
-	sprintf(fn, "%s.(%i).log", clone[n].nick, n);
+	snprintf(fn, sizeof(fn), "%s.(%i).log", clone[n].nick, n);
 	f = fopen(fn, "a");
 	if(f)
 	{
@@ -267,7 +290,7 @@ void debug(int n, char *format, ...)
         char s[IRC_BUF_LEN + 26];
 
         va_start(args, format);
-        vsprintf(s, format, args);
+        vsnprintf(s, sizeof(s), format, args);
         va_end(args);
         
 	    fprintf(f, "[%i] READ [%s]\n", (int) now, s);

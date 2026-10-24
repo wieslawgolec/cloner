@@ -7,6 +7,9 @@ struct irc_server
     char ip[INET_ADDRSTRLEN + 1];    
 
     unsigned short int port;
+#ifdef HAVE_SSL
+    unsigned short int use_ssl; /* 1 = use SSL/TLS for connections */
+#endif
 };
 
 struct ident_list
@@ -34,6 +37,9 @@ struct clone_connection
     char nick[NICK_LEN + 1];
     char user[MAX_IDENT_LEN + 1]; /* user ident */
 	short int sock;
+#ifdef HAVE_SSL
+    void *ssl; /* SSL* when HAVE_SSL */
+#endif
 	int status; // conn before
 	char buf[CLONE_BUF_SIZE + 1];
 	int penalty;    
@@ -46,6 +52,9 @@ struct irc_clone
     char nick[NICK_LEN + 1];
     char uid[NICK_LEN + 1]; /* user unique id */
 	short int sock;
+#ifdef HAVE_SSL
+    void *ssl; /* SSL* when HAVE_SSL */
+#endif
 	
     time_t next_join; /* next join time try */
     unsigned short int on_channel;

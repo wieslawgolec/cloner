@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #define CLONER_KEYFILE "key.h"
 
@@ -22,7 +23,7 @@ int main()
 
 	    sprintf(buf, "\\x%02x\\x%02x\\x%02x\\x%02x\\x%02x\\x%02x\\x%02x\\x%02x\\x%02x\\x%02x\\x%02x\\x%02x\\x%02x\\x%02x\\x%02x\\x%02x", 
 	    r(256), r(256), r(256), r(256), r(256), r(256), r(256), r(256), r(256), r(256), r(256), r(256), r(256), r(256), r(256), r(256));
-	    fprintf(f, "/*\n * This file contains magical key, tahts will be used during patching process.\n");
+	    fprintf(f, "/*\n * This file contains magical key, that will be used during patching process.\n");
 	    fprintf(f, " */\n\n");
 	    fprintf(f, "static unsigned char Key[] = \"%s\";\n", buf);
 	    fprintf(f, "static unsigned char FileMD5[] = \"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXYYYY\";\n"); 
