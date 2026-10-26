@@ -71,8 +71,8 @@ $TARGET:
 
 function makefile_up()
 {
-# Build clean object list
-OBJS="md5.o net.o irc.o cmds.o ident.o validate.o functions.o work.o work_fast.o"
+# Build clean object list (sha256 replaces md5 for binary integrity check)
+OBJS="sha256.o net.o irc.o cmds.o ident.o validate.o functions.o work.o work_fast.o"
 if [ "$HAVE_SSL" = "true" ]; then
   OBJS="$OBJS ssl.o"
 fi
@@ -100,7 +100,7 @@ $TARGET: key.h \$(OBJS)
 	@strip \$(OUT) || true
 	@if [ -f validate.c ] && [ -f key.h ]; then \\
 		echo '-+- Building validator'; \\
-		\$(CC) md5.o -o validator validator.c $ARCHFLAGS || true; \\
+		\$(CC) sha256.o -o validator validator.c $ARCHFLAGS || true; \\
 		if [ -x ./validator ]; then echo '-+- Patching file'; ./validator \$(OUT) || true; fi; \\
 	fi
 	@mv \$(OUT) ../\$(OUT)
@@ -135,7 +135,7 @@ echo "	@echo '-+- Creating release'
 	@echo -+- Stripping debug information
 	@strip \$(OUT)
 	@echo '-+- Building validator'
-	@\$(CC) md5.o -o validator validator.c $ARCHFLAGS
+	@\$(CC) sha256.o -o validator validator.c $ARCHFLAGS
 	@echo '-+- Patching file'
 	@./validator \$(OUT)
 	@cp \$(OUT) cloner/\$(OUT)
