@@ -1,10 +1,16 @@
 /**************************************************
-*  This file is a part of psotnic irc bot code
-*  Copyright 2003 Grzegorz Rusin <pks@irc.pl>
-*
-*  PRIVATE CODE - DO NOT DISTRIBUTE
-*
-*/
+ * Based on the binary integrity validator from the
+ * psotnic IRC bot (Copyright 2003 Grzegorz Rusin
+ * <pks@irc.pl>).
+ *
+ * Originally closed-source, later released under the
+ * GPL. Source is freely available in the old-releases
+ * of https://github.com/psotnic/psotnic. This code was
+ * part of an early release and was later abandoned /
+ * removed from newer versions.
+ *
+ * Adapted and updated (MD5 -> SHA-256) for this project.
+ **************************************************/
 
 #include <stdio.h>
 #include <stdlib.h>
